@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { GoHomeFill, GoSignIn, GoSignOut } from "react-icons/go";
 import { FaRegUser } from "react-icons/fa";
 import { IoChatbubbleEllipsesOutline } from 'react-icons/io5';
+import { IoImageOutline } from 'react-icons/io5'; 
+
 
 const LeftSidebar = () => {
   const navigate = useNavigate();
@@ -18,7 +20,7 @@ const LeftSidebar = () => {
       <div className="flex flex-col items-start space-y-6 text-gray-300">
         {/* Logo */}
         <Link to="/" className="mb-4">
-          <img src="/logo.png" alt="Postify Logo" className="w-10 h-10" />
+          <img src="/logo.png" alt="Postify Logo" className="w-45 h-15" />
         </Link>
 
         {/* Navigation Links */}
@@ -29,6 +31,10 @@ const LeftSidebar = () => {
         <Link to="/messages" className="flex items-center gap-x-4 text-xl font-semibold hover:text-white">
           <IoChatbubbleEllipsesOutline size={28} />
           <span>Messages</span>
+        </Link>
+        <Link to="/imagine" className="flex items-center gap-x-4 text-xl font-semibold hover:text-white">
+          <IoImageOutline size={28} />
+          <span>Imagine</span>
         </Link>
         
         {userInfo && (

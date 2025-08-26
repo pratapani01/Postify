@@ -50,17 +50,19 @@ export const getConversations = async (req, res) => {
 
     const conversations = await Conversation.find({ participants: userId }).populate({
       path: 'participants',
-      select: 'username profilePicture',
+      select: 'username profilePicture', // User ki details fetch karein
     });
 
-    // Remove the current user from the participants array
-    conversations.forEach(conversation => {
-      conversation.participants = conversation.participants.filter(
+    // Current user ko participants list se hata dein
+    const filteredConversations = conversations.map(conversation => {
+      const otherParticipants = conversation.participants.filter(
         participant => participant._id.toString() !== userId.toString()
       );
+      // Return a modified object
+      return { ...conversation.toObject(), participants: otherParticipants };
     });
 
-    res.status(200).json(conversations);
+    res.status(200).json(filteredConversations);
   } catch (error) {
     console.error('Error in getConversations controller: ', error.message);
     res.status(500).json({ error: 'Internal server error' });

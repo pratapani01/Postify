@@ -3,19 +3,19 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { getAllPosts } from '../services/apiService';
 import PostCard from '../components/PostCard';
 import CreatePostModal from '../components/CreatePostModal';
+import { useAuth } from '../context/AuthContext'; // 1. Import the useAuth hook
 
 const HomePage = () => {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [currentUser, setCurrentUser] = useState(null);
+  const { currentUser } = useAuth(); // 2. Use the global auth state
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const location = useLocation();
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if the route is '/create' to open the modal
     if (location.pathname === '/create') {
       setIsModalOpen(true);
     } else {
@@ -24,9 +24,6 @@ const HomePage = () => {
   }, [location]);
 
   useEffect(() => {
-    const userInfo = JSON.parse(localStorage.getItem('userInfo'));
-    setCurrentUser(userInfo);
-
     const fetchPosts = async () => {
       try {
         const data = await getAllPosts();
@@ -45,14 +42,13 @@ const HomePage = () => {
   };
 
   const handlePostCreated = (newPost) => {
-    // Add the author info manually to display it immediately
-    const postWithAuthor = { ...newPost, author: { username: currentUser.username } };
+    const postWithAuthor = { ...newPost, author: { username: currentUser.username, profilePicture: currentUser.profilePicture } };
     setPosts([postWithAuthor, ...posts]);
   };
 
   const closeModal = () => {
     setIsModalOpen(false);
-    navigate('/'); // Go back to the homepage when closing the modal
+    navigate('/');
   };
 
   if (loading) {

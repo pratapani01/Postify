@@ -1,17 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { getMessages, sendMessage } from '../services/apiService';
+import { useParams } from 'react-router-dom';
+import { getMessages, sendMessage, getUserById } from '../services/apiService';
 import { IoSend } from 'react-icons/io5';
 
-const ChatWindow = ({ selectedConversation, currentUser }) => {
+const ChatWindow = () => {
+  const { userId } = useParams();
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
-  const messagesEndRef = useRef(null); // Ref to scroll to bottom
+  const [otherUser, setOtherUser] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+  const messagesEndRef = useRef(null);
 
-  // This should be the other user in the conversation
-  const otherUser = selectedConversation.participants[0];
+  useEffect(() => {
+    const userInfo = JSON.parse(localStorage.getItem('userInfo'));
+    setCurrentUser(userInfo);
+  }, []);
 
-  // Function to scroll to the latest message
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -21,33 +26,38 @@ const ChatWindow = ({ selectedConversation, currentUser }) => {
   }, [messages]);
 
   useEffect(() => {
-    const fetchMessages = async () => {
-      if (!otherUser) return;
+    const fetchChatData = async () => {
+      if (!userId) return;
       setLoading(true);
       try {
-        const data = await getMessages(otherUser._id);
-        setMessages(data);
+        const messageData = await getMessages(userId);
+        const profileData = await getUserById(userId);
+        setMessages(messageData);
+        setOtherUser(profileData.user);
       } catch (error) {
-        console.error("Failed to fetch messages", error);
+        console.error("Failed to fetch chat data", error);
       } finally {
         setLoading(false);
       }
     };
-    fetchMessages();
-  }, [selectedConversation]);
+    fetchChatData();
+  }, [userId]);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() || !currentUser) return;
     try {
-      const sentMessage = await sendMessage(otherUser._id, newMessage);
-      // To display the new message instantly, we add it to our local state
+      const sentMessage = await sendMessage(userId, newMessage);
       setMessages([...messages, sentMessage]);
       setNewMessage('');
     } catch (error) {
       console.error("Failed to send message", error);
     }
   };
+
+  if (loading || !otherUser) {
+    return <div className="text-center p-10 text-gray-400">Loading Chat...</div>;
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -61,17 +71,13 @@ const ChatWindow = ({ selectedConversation, currentUser }) => {
 
       {/* Messages Area */}
       <div className="flex-1 p-4 overflow-y-auto">
-        {loading ? (
-          <p className="text-center text-gray-400">Loading messages...</p>
-        ) : (
-          messages.map((msg) => (
-            <div key={msg._id} className={`flex mb-2 ${msg.senderId === currentUser._id ? 'justify-end' : 'justify-start'}`}>
-              <div className={`rounded-lg px-3 py-2 max-w-xs ${msg.senderId === currentUser._id ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-200'}`}>
-                {msg.message}
-              </div>
+        {messages.map((msg) => (
+          <div key={msg._id} className={`flex mb-2 ${msg.senderId === currentUser._id ? 'justify-end' : 'justify-start'}`}>
+            <div className={`rounded-lg px-3 py-2 max-w-xs ${msg.senderId === currentUser._id ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-200'}`}>
+              {msg.message}
             </div>
-          ))
-        )}
+          </div>
+        ))}
         <div ref={messagesEndRef} />
       </div>
 

@@ -1,23 +1,34 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { likeUnlikePost, getCommentsForPost, createComment } from '../services/apiService';
 import { FaHeart, FaRegHeart, FaRegComment } from 'react-icons/fa';
+import { useAuth } from '../context/AuthContext';
 
-const Comment = ({ comment }) => (
-  <div className="flex items-start gap-x-3 mt-4">
-    <div className="w-8 h-8 rounded-full bg-gray-600 flex-shrink-0">
-      {comment.author.profilePicture && <img src={comment.author.profilePicture} alt={comment.author.username} className="w-full h-full rounded-full object-cover" />}
-    </div>
-    <div className="flex-1">
-      <p className="font-bold text-sm text-white">{comment.author.username}</p>
-      <p className="text-gray-300">{comment.text}</p>
-    </div>
-  </div>
-);
+const Comment = ({ comment }) => {
+  const { currentUser } = useAuth();
+  const commentAuthorPic = (currentUser && comment.author._id === currentUser._id)
+    ? currentUser.profilePicture
+    : comment.author.profilePicture;
 
-const PostCard = ({ post, currentUser, onPostUpdate }) => {
+  return (
+    <div className="flex items-start gap-x-3 mt-4">
+      <div className="w-8 h-8 rounded-full bg-gray-600 flex-shrink-0">
+        {commentAuthorPic && <img src={commentAuthorPic} alt={comment.author.username} className="w-full h-full rounded-full object-cover" />}
+      </div>
+      <div className="flex-1">
+        <p className="font-bold text-sm text-white">{comment.author.username}</p>
+        <p className="text-gray-300">{comment.text}</p>
+      </div>
+    </div>
+  );
+};
+
+const PostCard = ({ post, onPostUpdate }) => {
+  const { currentUser } = useAuth();
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(post.likes.length);
   const [comments, setComments] = useState([]);
+  const [commentCount, setCommentCount] = useState(0); // 1. Comment count ke liye naya state
   const [showComments, setShowComments] = useState(false);
   const [newComment, setNewComment] = useState('');
 
@@ -51,6 +62,7 @@ const PostCard = ({ post, currentUser, onPostUpdate }) => {
       try {
         const fetchedComments = await getCommentsForPost(post._id);
         setComments(fetchedComments);
+        setCommentCount(fetchedComments.length); // 2. Fetch karne par count set karein
       } catch (error) {
         console.error('Failed to fetch comments', error);
       }
@@ -64,34 +76,33 @@ const PostCard = ({ post, currentUser, onPostUpdate }) => {
       const createdComment = await createComment(post._id, newComment);
       const commentWithAuthor = { ...createdComment, author: { username: currentUser.username, profilePicture: currentUser.profilePicture } };
       setComments([commentWithAuthor, ...comments]);
+      setCommentCount(prevCount => prevCount + 1); // 3. Naya comment add hone par count badhayein
       setNewComment('');
     } catch (error) {
       console.error('Failed to create comment', error);
     }
   };
   
-  // This logic ensures the correct profile picture is shown, even after an update
-  const authorProfilePic = (currentUser && currentUser._id === post.author._id)
+  const authorProfilePic = (currentUser && post.author._id === currentUser._id)
     ? currentUser.profilePicture
     : post.author.profilePicture;
 
 
   return (
     <div className="bg-gray-800 rounded-lg p-4 shadow-lg m-4">
-      <div className="flex items-center mb-3">
+      <Link to={`/profile/${post.author.username}`} className="flex items-center mb-3">
         <div className="w-10 h-10 rounded-full bg-gray-600 mr-3 flex-shrink-0">
            {authorProfilePic && <img src={authorProfilePic} alt={post.author.username} className="w-full h-full rounded-full object-cover" />}
         </div>
         <div>
-          <p className="font-bold text-white">{post.author.username}</p>
+          <p className="font-bold text-white hover:underline">{post.author.username}</p>
           <p className="text-xs text-gray-400">
             {new Date(post.createdAt).toLocaleString()}
           </p>
         </div>
-      </div>
+      </Link>
       <p className="text-gray-300 whitespace-pre-wrap mb-4">{post.content}</p>
 
-      {/* Action Buttons: Like and Comment */}
       <div className="flex items-center gap-x-4 text-gray-400 border-t border-gray-700 pt-2">
         <div className="flex items-center gap-x-2">
           <button onClick={handleLike}>
@@ -105,11 +116,11 @@ const PostCard = ({ post, currentUser, onPostUpdate }) => {
         </div>
         <button onClick={handleToggleComments} className="flex items-center gap-x-2">
           <FaRegComment className="hover:text-blue-400" size={20} />
-          <span>{comments.length > 0 ? comments.length : ''}</span>
+          {/* 4. Naye state ko yahan display karein */}
+          <span>{commentCount > 0 ? commentCount : ''}</span>
         </button>
       </div>
 
-      {/* Comment Section */}
       {showComments && (
         <div className="mt-4 pt-4 border-t border-gray-700">
           <form onSubmit={handleCommentSubmit} className="flex gap-x-2 mb-4">

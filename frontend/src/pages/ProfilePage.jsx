@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getUserProfile, followUnfollowUser, sendMessage } from '../services/apiService';
+import { getUserProfile, followUnfollowUser } from '../services/apiService';
 import PostCard from '../components/PostCard';
 import EditProfileModal from '../components/EditProfileModal';
 import Toast from '../components/Toast';
@@ -58,7 +58,6 @@ const ProfilePage = () => {
     try {
       await followUnfollowUser(profile.user._id);
       setIsFollowing(!isFollowing);
-      // Optimistically update follower count for instant feedback
       setProfile(prevProfile => ({
         ...prevProfile,
         user: {
@@ -100,18 +99,14 @@ const ProfilePage = () => {
     setTimeout(() => setToastMessage(''), 3000);
   };
 
-  const handleStartConversation = async () => {
+  // This function now navigates directly to the chat page
+  const handleStartConversation = () => {
     if (!currentUser) {
       alert('You need to be logged in to send a message.');
       return;
     }
-    try {
-      await sendMessage(profile.user._id, 'Hi!');
-      navigate('/messages');
-    } catch (error) {
-      console.error('Failed to start conversation:', error);
-      alert('Could not start a conversation.');
-    }
+    // Navigate to the chat page with the other user's ID
+    navigate(`/messages/${profile.user._id}`);
   };
 
   if (loading) {

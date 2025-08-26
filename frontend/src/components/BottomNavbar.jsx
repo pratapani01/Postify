@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { GoHomeFill, GoPlusCircle, GoSignIn } from "react-icons/go";
 import { FaRegUser } from "react-icons/fa";
-import { IoChatbubbleEllipsesOutline } from 'react-icons/io5';
+import { IoChatbubbleEllipsesOutline ,IoImageOutline} from 'react-icons/io5';
 
 const BottomNavbar = () => {
   const userInfo = JSON.parse(localStorage.getItem('userInfo'));
@@ -19,7 +19,10 @@ const BottomNavbar = () => {
         <Link to="/create" className="hover:text-white">
           <GoPlusCircle size={36} />
         </Link>
-        
+        <Link to="/imagine" className="hover:text-white">
+          <IoImageOutline size={28} />
+        </Link>
+
         {/* Conditional Profile/Login Icon */}
         {userInfo ? (
           <Link to={`/profile/${userInfo.username}`} className="hover:text-white">

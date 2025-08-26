@@ -3,15 +3,15 @@ import mongoose from 'mongoose';
 const postSchema = mongoose.Schema(
   {
     author: {
-      type: mongoose.Schema.Types.ObjectId, // This will be the ID of the user who creates the post
+      type: mongoose.Schema.Types.ObjectId,
       required: true,
-      ref: 'User', // This creates a relationship with the User model
+      ref: 'User',
     },
     content: {
       type: String,
       required: true,
       trim: true,
-      maxlength: 280, // Similar to Twitter's character limit
+      maxlength: 280,
     },
     likes: [
       {
@@ -19,11 +19,13 @@ const postSchema = mongoose.Schema(
         ref: 'User',
       },
     ],
-    // We will add comments later
-    // comments: [{...}]
+    commentCount: { // <-- YEH NAYI FIELD ADD KAREIN
+      type: Number,
+      default: 0,
+    },
   },
   {
-    timestamps: true, // Automatically adds createdAt and updatedAt fields
+    timestamps: true,
   }
 );
 

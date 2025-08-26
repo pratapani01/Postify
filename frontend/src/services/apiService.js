@@ -125,3 +125,20 @@ export const sendMessage = async (receiverId, message) => {
   );
   return response.data;
 };
+export const getUserById = async (userId) => {
+  const response = await axios.get(`${API_URL}/users/${userId}`);
+  return response.data;
+};
+export const generateImage = async (prompt) => {
+  const response = await axios.post(
+    `${API_URL}/generate`,
+    { prompt },
+    {
+      headers: {
+        Authorization: getAuthToken(),
+      },
+      responseType: 'blob', // Image data ke liye yeh zaroori hai
+    }
+  );
+  return response.data;
+};

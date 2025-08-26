@@ -44,7 +44,7 @@ const RegisterPage = () => {
   };
 
   return (
-    <div className="min-h-screen md:grid md:grid-cols-2">
+    <div className="min-h-screen md:grid md:grid-cols-2 bg-gray-50 dark:bg-gray-900">
       {/* Left Side: Registration Form */}
       <div className="flex items-center justify-center p-6 sm:p-12">
         <div className="w-full max-w-md">
