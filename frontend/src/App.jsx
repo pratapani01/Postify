@@ -71,6 +71,7 @@ function App() {
             <Route path="/messages" element={<AnimatedPage><MessagesPage /></AnimatedPage>} />
             <Route path="/messages/:otherUserId" element={<AnimatedPage><MessagesPage /></AnimatedPage>} />
             <Route path="/imagine" element={<AnimatedPage><ImaginePage /></AnimatedPage>} />
+            <Route path="/create" element={<AnimatedPage><HomePage showCreatePostModal={true} /></AnimatedPage>} />
           </Route>
           <Route path="/login" element={<AnimatedPage><LoginPage /></AnimatedPage>} />
           <Route path="/register" element={<AnimatedPage><RegisterPage /></AnimatedPage>} />
