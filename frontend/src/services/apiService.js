@@ -1,144 +1,103 @@
 import axios from 'axios';
 
+// This will use the Vercel URL in production and the local URL in development
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-const getAuthToken = () => {
-  const userInfo = JSON.parse(localStorage.getItem('userInfo'));
-  return userInfo ? `Bearer ${userInfo.token}` : '';
-};
+const api = axios.create({
+  baseURL: API_URL,
+});
 
+// This is a special function (interceptor) that automatically adds the login token
+// to every request that is sent to the backend.
+api.interceptors.request.use((config) => {
+  const userInfo = JSON.parse(localStorage.getItem('userInfo'));
+  if (userInfo && userInfo.token) {
+    config.headers.Authorization = `Bearer ${userInfo.token}`;
+  }
+  return config;
+});
+
+// === Auth Functions ===
 export const loginUser = async (credentials) => {
-  const response = await axios.post(`${API_URL}/users/login`, credentials);
+  const response = await api.post('/users/login', credentials);
   return response.data;
 };
 
 export const registerUser = async (userData) => {
-  const response = await axios.post(`${API_URL}/users/register`, userData);
+  const response = await api.post('/users/register', userData);
   return response.data;
 };
 
+// === Post Functions ===
 export const getAllPosts = async () => {
-  const response = await axios.get(`${API_URL}/posts`);
-  return response.data;
-};
-
-export const likeUnlikePost = async (postId) => {
-  const response = await axios.put(
-    `${API_URL}/posts/${postId}/like`,
-    {},
-    {
-      headers: {
-        Authorization: getAuthToken(),
-      },
-    }
-  );
-  return response.data;
-};
-
-export const getCommentsForPost = async (postId) => {
-  const response = await axios.get(`${API_URL}/posts/${postId}/comments`);
-  return response.data;
-};
-
-export const createComment = async (postId, text) => {
-  const response = await axios.post(
-    `${API_URL}/posts/${postId}/comments`,
-    { text },
-    {
-      headers: {
-        Authorization: getAuthToken(),
-      },
-    }
-  );
+  const response = await api.get('/posts');
   return response.data;
 };
 
 export const createPost = async (postData) => {
-  const response = await axios.post(
-    `${API_URL}/posts`,
-    postData,
-    {
-      headers: {
-        Authorization: getAuthToken(),
-      },
-    }
-  );
+  const response = await api.post('/posts', postData);
   return response.data;
 };
 
+export const likeUnlikePost = async (postId) => {
+  const response = await api.put(`/posts/${postId}/like`);
+  return response.data;
+};
+
+// === Comment Functions ===
+export const getCommentsForPost = async (postId) => {
+  const response = await api.get(`/posts/${postId}/comments`);
+  return response.data;
+};
+
+export const createComment = async (postId, text) => {
+  const response = await api.post(`/posts/${postId}/comments`, { text });
+  return response.data;
+};
+
+// === User/Profile Functions ===
 export const getUserProfile = async (username) => {
-  const response = await axios.get(`${API_URL}/users/profile/${username}`);
+  const response = await api.get(`/users/profile/${username}`);
+  return response.data;
+};
+
+export const getUserById = async (userId) => {
+  const response = await api.get(`/users/${userId}`);
   return response.data;
 };
 
 export const followUnfollowUser = async (userId) => {
-  const response = await axios.post(
-    `${API_URL}/users/${userId}/follow`,
-    {},
-    {
-      headers: {
-        Authorization: getAuthToken(),
-      },
-    }
-  );
+  const response = await api.post(`/users/${userId}/follow`);
   return response.data;
 };
 
-// This function is updated to handle FormData for file uploads
 export const updateUserProfile = async (formData) => {
-  const response = await axios.put(
-    `${API_URL}/users/profile`,
-    formData, // Send formData instead of JSON
-    {
-      headers: {
-        'Content-Type': 'multipart/form-data', // Important for file uploads
-        Authorization: getAuthToken(),
-      },
-    }
-  );
-  return response.data;
+    const response = await api.put('/users/profile', formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+        },
+    });
+    return response.data;
 };
-// Get all conversations for the logged-in user
+
+// === Messaging Functions ===
 export const getConversations = async () => {
-  const response = await axios.get(`${API_URL}/messages`, {
-    headers: { Authorization: getAuthToken() },
-  });
+  const response = await api.get('/messages/conversations');
   return response.data;
 };
 
-// Get messages for a specific conversation
-export const getMessages = async (userId) => {
-  const response = await axios.get(`${API_URL}/messages/${userId}`, {
-    headers: { Authorization: getAuthToken() },
-  });
+export const getMessages = async (otherUserId) => {
+  const response = await api.get(`/messages/${otherUserId}`);
   return response.data;
 };
 
-// Send a new message
-export const sendMessage = async (receiverId, message) => {
-  const response = await axios.post(
-    `${API_URL}/messages/send/${receiverId}`,
-    { message },
-    {
-      headers: { Authorization: getAuthToken() },
-    }
-  );
+export const sendMessage = async (receiverId, text) => {
+  const response = await api.post('/messages', { receiverId, text });
   return response.data;
 };
-export const getUserById = async (userId) => {
-  const response = await axios.get(`${API_URL}/users/${userId}`);
-  return response.data;
-};
+
+// === AI Generation ===
 export const generateImage = async (prompt) => {
-  const response = await axios.post(
-    `${API_URL}/generate`,
-    { prompt },
-    {
-      headers: {
-        Authorization: getAuthToken(),
-      },
-      responseType: 'blob', // Image data ke liye yeh zaroori hai
-    }
-  );
-  return response.data;
+    const response = await api.post('/generate', { prompt }, { responseType: 'blob' });
+    return response.data;
 };
