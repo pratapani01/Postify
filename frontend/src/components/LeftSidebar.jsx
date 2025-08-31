@@ -1,60 +1,70 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { GoHomeFill, GoSignIn, GoSignOut } from "react-icons/go";
-import { FaRegUser } from "react-icons/fa";
-import { IoChatbubbleEllipsesOutline } from 'react-icons/io5';
-import { IoImageOutline } from 'react-icons/io5'; 
+import { NavLink, Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
+// Import Icons
+import { GoHomeFill, GoPlusCircle } from 'react-icons/go';
+import { FaRegUser } from 'react-icons/fa';
+import { IoChatbubbleEllipsesOutline, IoSparklesOutline } from 'react-icons/io5';
+import { FiLogIn, FiLogOut } from 'react-icons/fi';
 
 const LeftSidebar = () => {
-  const navigate = useNavigate();
-  const userInfo = JSON.parse(localStorage.getItem('userInfo'));
+  const { currentUser, logoutUser } = useAuth();
 
-  const handleLogout = () => {
-    localStorage.removeItem('userInfo');
-    navigate('/login');
-  };
+  // Helper function for NavLink styling
+  const getLinkClass = ({ isActive }) =>
+    `flex items-center gap-x-4 py-2 px-4 rounded-full text-xl font-semibold transition-colors duration-200 ${
+      isActive
+        ? 'text-white bg-white/10'
+        : 'text-gray-400 hover:bg-white/5 hover:text-white'
+    }`;
 
   return (
-    <aside className="w-64 p-4 sticky top-0">
-      <div className="flex flex-col items-start space-y-6 text-gray-300">
+    <aside className="w-[275px] p-4 flex flex-col justify-between h-screen sticky top-0">
+      <div>
         {/* Logo */}
-        <Link to="/" className="mb-4">
-          <img src="/logo.png" alt="Postify Logo" className="w-45 h-15" />
+        <Link to="/" className="mb-5 inline-block">
+          <img src="/logo.png" alt="Postify Logo" className="w-25 h-15" />
         </Link>
 
         {/* Navigation Links */}
-        <Link to="/" className="flex items-center gap-x-4 text-xl font-semibold hover:text-white">
-          <GoHomeFill size={28} />
-          <span>Home</span>
-        </Link>
-        <Link to="/messages" className="flex items-center gap-x-4 text-xl font-semibold hover:text-white">
-          <IoChatbubbleEllipsesOutline size={28} />
-          <span>Messages</span>
-        </Link>
-        <Link to="/imagine" className="flex items-center gap-x-4 text-xl font-semibold hover:text-white">
-          <IoImageOutline size={28} />
-          <span>Imagine</span>
-        </Link>
-        
-        {userInfo && (
-          <Link to={`/profile/${userInfo.username}`} className="flex items-center gap-x-4 text-xl font-semibold hover:text-white">
+        <nav className="flex flex-col items-start space-y-2">
+          <NavLink to="/" className={getLinkClass}>
+            <GoHomeFill size={28} />
+            <span>Home</span>
+          </NavLink>
+          <NavLink to="/messages" className={getLinkClass}>
+            <IoChatbubbleEllipsesOutline size={28} />
+            <span>Messages</span>
+          </NavLink>
+          <NavLink to="/imagine" className={getLinkClass}>
+            <IoSparklesOutline size={28} />
+            <span>Imagine</span>
+          </NavLink>
+          {/* Create link is now a regular nav link */}
+          <NavLink to="/create" className={getLinkClass}>
+            <GoPlusCircle size={28} />
+            <span>Create</span>
+          </NavLink>
+          <NavLink to={`/profile/${currentUser?.username || ''}`} className={getLinkClass}>
             <FaRegUser size={24} />
             <span>Profile</span>
-          </Link>
-        )}
+          </NavLink>
+        </nav>
+      </div>
 
-        {/* Conditional Login/Logout Button */}
-        {userInfo ? (
-          <button onClick={handleLogout} className="flex items-center gap-x-4 text-xl font-semibold hover:text-white">
-            <GoSignOut size={28} />
+      {/* Logout/Login Button */}
+      <div className="mt-auto">
+        {currentUser ? (
+          <button onClick={logoutUser} className="w-full flex items-center gap-x-4 py-2 px-4 rounded-full text-xl font-semibold text-gray-400 hover:bg-white/5 hover:text-white">
+            <FiLogOut size={26} />
             <span>Logout</span>
           </button>
         ) : (
-          <Link to="/login" className="flex items-center gap-x-4 text-xl font-semibold hover:text-white">
-            <GoSignIn size={28} />
+          <NavLink to="/login" className={getLinkClass}>
+            <FiLogIn size={26} />
             <span>Login</span>
-          </Link>
+          </NavLink>
         )}
       </div>
     </aside>

@@ -1,37 +1,49 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { GoHomeFill, GoPlusCircle, GoSignIn } from "react-icons/go";
-import { FaRegUser } from "react-icons/fa";
-import { IoChatbubbleEllipsesOutline ,IoImageOutline} from 'react-icons/io5';
+import { NavLink } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+
+// Import Icons
+import { GoHomeFill, GoPlusCircle } from 'react-icons/go';
+import { FaRegUser } from 'react-icons/fa';
+import { IoChatbubbleEllipsesOutline, IoSparklesOutline } from 'react-icons/io5';
+import { FiLogIn, FiLogOut } from 'react-icons/fi';
 
 const BottomNavbar = () => {
-  const userInfo = JSON.parse(localStorage.getItem('userInfo'));
+  const { currentUser, logoutUser } = useAuth();
+
+  // Helper function for NavLink styling
+  const getLinkClass = ({ isActive }) => 
+    `transition-colors duration-200 ${isActive ? "text-white" : "text-gray-400 hover:text-white"}`;
 
   return (
-    <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 w-auto max-w-sm px-6 py-3 bg-gray-800/50 backdrop-blur-lg rounded-full shadow-lg z-50">
-      <div className="flex justify-around items-center gap-x-6 text-gray-300">
-        <Link to="/" className="hover:text-white">
+    <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 w-auto max-w-md px-6 py-3 bg-gray-800/70 backdrop-blur-lg rounded-full shadow-lg z-50 lg:hidden">
+      <div className="flex justify-around items-center gap-x-6">
+        <NavLink to="/" className={getLinkClass}>
           <GoHomeFill size={28} />
-        </Link>
-        <Link to="/messages" className="hover:text-white">
+        </NavLink>
+        <NavLink to="/messages" className={getLinkClass}>
           <IoChatbubbleEllipsesOutline size={28} />
-        </Link>
-        <Link to="/create" className="hover:text-white">
+        </NavLink>
+        <NavLink to="/create" className={getLinkClass}>
           <GoPlusCircle size={36} />
-        </Link>
-        <Link to="/imagine" className="hover:text-white">
-          <IoImageOutline size={28} />
-        </Link>
-
-        {/* Conditional Profile/Login Icon */}
-        {userInfo ? (
-          <Link to={`/profile/${userInfo.username}`} className="hover:text-white">
-            <FaRegUser size={24} />
-          </Link>
+        </NavLink>
+        <NavLink to="/imagine" className={getLinkClass}>
+          <IoSparklesOutline size={28} />
+        </NavLink>
+        
+        {currentUser ? (
+          <>
+            <NavLink to={`/profile/${currentUser.username}`} className={getLinkClass}>
+              <FaRegUser size={24} />
+            </NavLink>
+            <button onClick={logoutUser} className="text-gray-400 hover:text-white">
+              <FiLogOut size={26} />
+            </button>
+          </>
         ) : (
-          <Link to="/login" className="hover:text-white">
-            <GoSignIn size={28} />
-          </Link>
+          <NavLink to="/login" className={getLinkClass}>
+            <FiLogIn size={26} />
+          </NavLink>
         )}
       </div>
     </nav>
@@ -39,3 +51,4 @@ const BottomNavbar = () => {
 };
 
 export default BottomNavbar;
+

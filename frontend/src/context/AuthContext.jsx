@@ -1,41 +1,34 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useContext } from 'react';
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState(null);
+  const [currentUser, setCurrentUser] = useState(
+    JSON.parse(localStorage.getItem('userInfo'))
+  );
 
-  useEffect(() => {
-    // App start hone par, localStorage se user ki info load karein
-    const userInfo = JSON.parse(localStorage.getItem('userInfo'));
-    if (userInfo) {
-      setCurrentUser(userInfo);
-    }
-  }, []);
-
-  const login = (userData) => {
+  const loginUser = (userData) => {
     localStorage.setItem('userInfo', JSON.stringify(userData));
     setCurrentUser(userData);
   };
 
-  const logout = () => {
+  const logoutUser = () => {
     localStorage.removeItem('userInfo');
     setCurrentUser(null);
   };
 
   const updateUser = (updatedData) => {
-    // Yeh function profile update hone par nayi info save karega
-    const newUserData = { ...currentUser, ...updatedData };
-    localStorage.setItem('userInfo', JSON.stringify(newUserData));
-    setCurrentUser(newUserData);
+    const storedUser = JSON.parse(localStorage.getItem('userInfo'));
+    const newUserInfo = { ...storedUser, ...updatedData };
+    localStorage.setItem('userInfo', JSON.stringify(newUserInfo));
+    setCurrentUser(newUserInfo);
   };
 
   return (
-    <AuthContext.Provider value={{ currentUser, login, logout, updateUser }}>
+    <AuthContext.Provider value={{ currentUser, loginUser, logoutUser, updateUser }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
-// Ek custom hook taaki hum aasani se user ki info access kar sakein
 export const useAuth = () => useContext(AuthContext);

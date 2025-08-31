@@ -1,61 +1,66 @@
 import express from 'express';
+import http from 'http';
+import { Server } from 'socket.io';
 import dotenv from 'dotenv';
 import cors from 'cors';
-import { createServer } from 'http';
-import { Server } from 'socket.io';
-
 import connectDB from './config/db.js';
+
+// Route imports
 import userRoutes from './routes/userRoutes.js';
 import postRoutes from './routes/postRoutes.js';
-import generationRoutes from './routes/generationRoutes.js';
 import messageRoutes from './routes/messageRoutes.js';
+import generationRoutes from './routes/generationRoutes.js';
 
+// Load environment variables
 dotenv.config();
+
+// Database connection
 connectDB();
 
 const app = express();
+const server = http.createServer(app);
 
-// CORS ko yahan aasan tareeke se setup karein
-app.use(cors());
+// CORS configuration to allow requests from your Vercel frontend and local dev server
+const corsOptions = {
+  origin: [process.env.FRONTEND_URL || "http://localhost:5173"],
+  optionsSuccessStatus: 200,
+};
 
-// Body Parsers ko routes se theek pehle rakhein
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// API Routes
-app.use('/api/users', userRoutes);
-app.use('/api/posts', postRoutes);
-app.use('/api/generate', generationRoutes);
-app.use('/api/messages', messageRoutes);
-
-// Socket.IO Setup
-const httpServer = createServer(app);
-const io = new Server(httpServer, {
-  cors: {
-    origin: '*', // Sabhi connections ko allow karein
-  },
+const io = new Server(server, {
+  cors: corsOptions,
 });
 
-let onlineUsers = [];
+// Middleware
+app.use(cors(corsOptions));
+app.use(express.json()); // To parse JSON bodies
+
+// --- Socket.IO Logic ---
+let users = [];
 
 const addUser = (userId, socketId) => {
-  !onlineUsers.some((user) => user.userId === userId) &&
-    onlineUsers.push({ userId, socketId });
+  !users.some((user) => user.userId === userId) &&
+    users.push({ userId, socketId });
 };
 
 const removeUser = (socketId) => {
-  onlineUsers = onlineUsers.filter((user) => user.socketId !== socketId);
+  users = users.filter((user) => user.socketId !== socketId);
 };
 
 const getUser = (userId) => {
-  return onlineUsers.find((user) => user.userId === userId);
+  return users.find((user) => user.userId === userId);
 };
 
 io.on('connection', (socket) => {
+  // when a user connects
+  console.log('A user connected.');
+
+  // take userId and socketId from user
   socket.on('addUser', (userId) => {
     addUser(userId, socket.id);
+    io.emit('getUsers', users);
   });
 
+  // send and get message
   socket.on('sendMessage', ({ senderId, receiverId, text }) => {
     const user = getUser(receiverId);
     if (user) {
@@ -66,11 +71,28 @@ io.on('connection', (socket) => {
     }
   });
 
+  // when a user disconnects
   socket.on('disconnect', () => {
+    console.log('A user disconnected!');
     removeUser(socket.id);
+    io.emit('getUsers', users);
   });
 });
 
-const PORT = process.env.PORT || 5000;
-httpServer.listen(PORT, () => console.log(`Server is running on port ${PORT} 🔥`));
+// --- API Routes ---
+app.use('/api/users', userRoutes);
+app.use('/api/posts', postRoutes);
+app.use('/api/messages', messageRoutes);
+app.use('/api/generate', generationRoutes);
 
+// Base route for Render health check
+app.get('/', (req, res) => {
+  res.send('API is running successfully.');
+});
+
+// --- Server Listening ---
+const PORT = process.env.PORT || 5000;
+
+server.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT} 🔥`);
+});

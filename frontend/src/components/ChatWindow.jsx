@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useContext } from 'react';
 import { useParams } from 'react-router-dom';
 import { getMessages, sendMessage, getUserById } from '../services/apiService';
 import { useAuth } from '../context/AuthContext';
-import { io } from 'socket.io-client'; // Socket.IO client import karein
-import { IoSend } from "react-icons/io5";
+import { io } from 'socket.io-client';
+import { FaPaperPlane } from 'react-icons/fa';
 
 const ChatWindow = () => {
   const { userId: otherUserId } = useParams();
@@ -14,88 +14,84 @@ const ChatWindow = () => {
   const socket = useRef();
   const scrollRef = useRef();
 
-  // Socket.IO connection setup
+  // Connect to Socket.IO
   useEffect(() => {
-    // Backend ka URL Vercel se le, ya local use karein
-    const SOCKET_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
-    socket.current = io(SOCKET_URL);
-
-    // Live message receive karein
+    socket.current = io(import.meta.env.VITE_API_URL || 'http://localhost:5000');
+    
     socket.current.on('getMessage', (data) => {
-      // Check karein ki message isi chat ka hai ya nahi
-      if (data.sender === otherUserId) {
-        setMessages((prev) => [...prev, { sender: data.sender, text: data.text, createdAt: Date.now() }]);
-      }
+        // Only update if the message is part of the current conversation
+        if (data.sender === otherUserId) {
+            setMessages((prev) => [...prev, { sender: data.sender, text: data.text, createdAt: new Date() }]);
+        }
     });
 
-    // Jab component band ho to connection tod dein
     return () => {
       socket.current.disconnect();
     };
   }, [otherUserId]);
 
-  // Server ko batayein ki aap online hain
+  // Add user to socket server
   useEffect(() => {
     if (currentUser) {
       socket.current.emit('addUser', currentUser._id);
     }
   }, [currentUser]);
 
-  // Messages aur user profile fetch karein
+  // Fetch messages and user data
   useEffect(() => {
     const fetchChatData = async () => {
-      try {
-        const messageData = await getMessages(otherUserId);
-        const userData = await getUserById(otherUserId);
-        setMessages(messageData);
-        setOtherUser(userData.user);
-      } catch (error) {
-        console.error("Failed to fetch chat data", error);
+      if (currentUser) {
+        try {
+          const fetchedMessages = await getMessages(otherUserId);
+          const fetchedUser = await getUserById(otherUserId);
+          setMessages(fetchedMessages);
+          setOtherUser(fetchedUser.user);
+        } catch (error) {
+          console.error('Failed to fetch chat data', error);
+        }
       }
     };
     fetchChatData();
-  }, [otherUserId]);
-
-  // Har naye message par neeche scroll karein
+  }, [otherUserId, currentUser]);
+  
+  // Auto-scroll to the latest message
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() || !currentUser) return;
 
     const message = {
       sender: currentUser._id,
       text: newMessage,
-      createdAt: Date.now(),
+      createdAt: new Date(),
     };
-    
-    // Server ko live message bhejein
+
     socket.current.emit('sendMessage', {
       senderId: currentUser._id,
       receiverId: otherUserId,
       text: newMessage,
     });
-    
-    // Database mein message save karein
+
     try {
-      const savedMessage = await sendMessage(otherUserId, newMessage);
-      setMessages((prev) => [...prev, savedMessage]);
+      const sentMessage = await sendMessage(otherUserId, newMessage);
+      setMessages([...messages, sentMessage]);
       setNewMessage('');
     } catch (error) {
-      console.error('Failed to send message', error);
+      console.error('Failed to send message:', error);
     }
   };
 
   if (!otherUser) {
-    return <div className="flex-1 flex items-center justify-center text-gray-400">Loading Chat...</div>;
+    return <div className="flex-1 p-4 text-center text-gray-400">Loading Chat...</div>;
   }
 
   return (
     <div className="flex flex-col h-full">
       {/* Chat Header */}
-      <div className="p-4 border-b border-gray-700 flex items-center gap-x-4">
+      <div className="p-4 border-b border-gray-700/50 flex items-center gap-x-4">
         <div className="w-10 h-10 rounded-full bg-gray-600">
           {otherUser.profilePicture && <img src={otherUser.profilePicture} alt={otherUser.username} className="w-full h-full rounded-full object-cover" />}
         </div>
@@ -103,28 +99,40 @@ const ChatWindow = () => {
       </div>
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 p-4 overflow-y-auto">
         {messages.map((msg) => (
-          <div ref={scrollRef} key={msg._id || msg.createdAt} className={`flex ${msg.sender === currentUser._id ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${msg.sender === currentUser._id ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-200'}`}>
-              <p>{msg.text}</p>
+          <div key={msg._id || msg.createdAt} ref={scrollRef}>
+            <div className={`flex mb-4 ${msg.sender === currentUser._id ? 'justify-end' : 'justify-start'}`}>
+              <div
+                className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${
+                  msg.sender === currentUser._id
+                    ? 'bg-blue-600 text-white rounded-br-none'
+                    : 'bg-gray-700 text-gray-200 rounded-bl-none'
+                }`}
+              >
+                <p>{msg.text}</p>
+              </div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Message Input Form */}
-      <div className="p-4 border-t border-gray-700">
+      {/* Message Input */}
+      <div className="p-4 border-t border-gray-700/50">
         <form onSubmit={handleSendMessage} className="flex items-center gap-x-2">
           <input
             type="text"
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             placeholder="Type a message..."
-            className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-full text-white focus:outline-none focus:border-blue-500"
+            className="flex-1 px-4 py-2 bg-gray-700 border border-transparent rounded-full text-white focus:outline-none focus:border-blue-500"
           />
-          <button type="submit" className="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700">
-            <IoSend size={20} />
+          <button
+            type="submit"
+            className="p-3 bg-blue-600 text-white rounded-full font-semibold hover:bg-blue-700 disabled:bg-gray-500"
+            disabled={!newMessage.trim()}
+          >
+            <FaPaperPlane />
           </button>
         </form>
       </div>
@@ -133,3 +141,4 @@ const ChatWindow = () => {
 };
 
 export default ChatWindow;
+
