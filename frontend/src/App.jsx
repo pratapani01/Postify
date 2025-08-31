@@ -1,5 +1,6 @@
 import { Routes, Route, Outlet, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
+import { AuthProvider } from './context/AuthContext';
 
 // Import Pages
 import HomePage from './pages/HomePage';
@@ -14,8 +15,6 @@ import LeftSidebar from './components/LeftSidebar';
 import RightSidebar from './components/RightSidebar';
 import BottomNavbar from './components/BottomNavbar';
 import MobileHeader from './components/MobileHeader';
-// THE FIX IS HERE: Import the AuthProvider correctly
-import { AuthProvider } from './context/AuthContext';
 
 const AnimatedPage = ({ children }) => (
   <motion.div
@@ -23,6 +22,7 @@ const AnimatedPage = ({ children }) => (
     animate={{ opacity: 1 }}
     exit={{ opacity: 0 }}
     transition={{ duration: 0.25 }}
+    className="h-full" // Make animation wrapper take full height
   >
     {children}
   </motion.div>
@@ -36,11 +36,15 @@ const MainLayout = () => {
           <LeftSidebar />
         </div>
         
-        <main className="w-full max-w-2xl lg:max-w-xl xl:max-w-2xl border-x border-gray-700">
-          <div className="lg:hidden">
+        {/* THE FIX IS HERE: This main tag is now a flex container that fills the height */}
+        <main className="w-full max-w-2xl lg:max-w-xl xl:max-w-2xl border-x border-gray-700 flex flex-col">
+          <div className="lg:hidden sticky top-0 z-20">
             <MobileHeader />
           </div>
-          <Outlet />
+          {/* Outlet now expands to fill the remaining space */}
+          <div className="flex-1 overflow-y-auto">
+            <Outlet />
+          </div>
         </main>
 
         <div className="hidden lg:block sticky top-0 h-screen">
@@ -58,20 +62,16 @@ const MainLayout = () => {
 function App() {
   const location = useLocation();
   return (
-    // THE FIX IS HERE: Wrap the entire app with AuthProvider
     <AuthProvider>
       <AnimatePresence mode="wait">
         <Routes location={location} key={location.pathname}>
           <Route element={<MainLayout />}>
             <Route path="/" element={<AnimatedPage><HomePage /></AnimatedPage>} />
             <Route path="/profile/:username" element={<AnimatedPage><ProfilePage /></AnimatedPage>} />
-            
             <Route path="/messages" element={<AnimatedPage><MessagesPage /></AnimatedPage>} />
             <Route path="/messages/:otherUserId" element={<AnimatedPage><MessagesPage /></AnimatedPage>} />
-            
             <Route path="/imagine" element={<AnimatedPage><ImaginePage /></AnimatedPage>} />
           </Route>
-
           <Route path="/login" element={<AnimatedPage><LoginPage /></AnimatedPage>} />
           <Route path="/register" element={<AnimatedPage><RegisterPage /></AnimatedPage>} />
         </Routes>
