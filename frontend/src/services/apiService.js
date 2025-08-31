@@ -1,14 +1,12 @@
 import axios from 'axios';
 
-// This will use the Vercel URL in production and the local URL in development
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-
+// This creates a central configuration for all our API calls
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
 });
 
-// This is a special function (interceptor) that automatically adds the login token
-// to every request that is sent to the backend.
+// This is an "interceptor" - a guard that automatically adds the login token to every request.
+// This is a professional way to handle authentication.
 api.interceptors.request.use((config) => {
   const userInfo = JSON.parse(localStorage.getItem('userInfo'));
   if (userInfo && userInfo.token) {
@@ -17,7 +15,7 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// === Auth Functions ===
+// --- Auth ---
 export const loginUser = async (credentials) => {
   const response = await api.post('/users/login', credentials);
   return response.data;
@@ -28,7 +26,7 @@ export const registerUser = async (userData) => {
   return response.data;
 };
 
-// === Post Functions ===
+// --- Posts ---
 export const getAllPosts = async () => {
   const response = await api.get('/posts');
   return response.data;
@@ -44,7 +42,7 @@ export const likeUnlikePost = async (postId) => {
   return response.data;
 };
 
-// === Comment Functions ===
+// --- Comments ---
 export const getCommentsForPost = async (postId) => {
   const response = await api.get(`/posts/${postId}/comments`);
   return response.data;
@@ -55,7 +53,7 @@ export const createComment = async (postId, text) => {
   return response.data;
 };
 
-// === User/Profile Functions ===
+// --- Users & Profiles ---
 export const getUserProfile = async (username) => {
   const response = await api.get(`/users/profile/${username}`);
   return response.data;
@@ -72,32 +70,36 @@ export const followUnfollowUser = async (userId) => {
 };
 
 export const updateUserProfile = async (formData) => {
-    const response = await api.put('/users/profile', formData, {
-        headers: {
-            'Content-Type': 'multipart/form-data',
-        },
-    });
-    return response.data;
+  const response = await api.put('/users/profile', formData, {
+    headers: { 'Content-Type': 'multipart/-data' },
+  });
+  return response.data;
 };
 
-// === Messaging Functions ===
+// --- Messaging ---
 export const getConversations = async () => {
-  const response = await api.get('/messages/conversations');
+  // THE FIX IS HERE: The correct URL is just '/messages', not '/messages/conversations'
+  const response = await api.get('/messages');
   return response.data;
 };
 
-export const getMessages = async (otherUserId) => {
-  const response = await api.get(`/messages/${otherUserId}`);
+export const getMessages = async (userId) => {
+  const response = await api.get(`/messages/${userId}`);
   return response.data;
 };
 
-export const sendMessage = async (receiverId, text) => {
-  const response = await api.post('/messages', { receiverId, text });
+export const sendMessage = async (receiverId, message) => {
+  const response = await api.post(`/messages/send/${receiverId}`, { message });
   return response.data;
 };
 
-// === AI Generation ===
+// --- AI Generation ---
 export const generateImage = async (prompt) => {
-    const response = await api.post('/generate', { prompt }, { responseType: 'blob' });
-    return response.data;
+  const response = await api.post(
+    '/generate',
+    { prompt },
+    { responseType: 'blob' }
+  );
+  return response.data;
 };
+

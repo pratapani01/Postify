@@ -1,10 +1,7 @@
 import Conversation from '../models/conversationModel.js';
 import Message from '../models/messageModel.js';
-import User from '../models/userModel.js';
+import { getReceiverSocketId, io } from '../server.js';
 
-// @desc    Send a message
-// @route   POST /api/messages/send/:receiverId
-// @access  Private
 export const sendMessage = async (req, res) => {
   try {
     const { message } = req.body;
@@ -31,63 +28,68 @@ export const sendMessage = async (req, res) => {
       conversation.messages.push(newMessage._id);
     }
 
-    // This will run both saves in parallel
+    // This will run in parallel
     await Promise.all([conversation.save(), newMessage.save()]);
+
+    // SOCKET.IO REAL-TIME FUNCTIONALITY
+    const receiverSocketId = getReceiverSocketId(receiverId);
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit('newMessage', newMessage);
+    }
 
     res.status(201).json(newMessage);
   } catch (error) {
-    console.error('Error in sendMessage controller: ', error.message);
+    console.error('Error in sendMessage: ', error.message);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
 
-// @desc    Get all conversations for a user
-// @route   GET /api/messages
-// @access  Private
 export const getConversations = async (req, res) => {
   try {
-    const userId = req.user._id;
+    const loggedInUserId = req.user._id;
+    const conversations = await Conversation.find({ participants: loggedInUserId })
+      .populate({
+        path: 'participants',
+        select: 'username profilePicture',
+      })
+      .populate({
+        path: 'messages',
+        options: { sort: { createdAt: -1 }, limit: 1 }, // Fetch only the last message
+      });
 
-    const conversations = await Conversation.find({ participants: userId }).populate({
-      path: 'participants',
-      select: 'username profilePicture', // User ki details fetch karein
-    });
-
-    // Current user ko participants list se hata dein
-    const filteredConversations = conversations.map(conversation => {
-      const otherParticipants = conversation.participants.filter(
-        participant => participant._id.toString() !== userId.toString()
+    // Filter out the logged-in user from participants list
+    const formattedConversations = conversations.map((conv) => {
+      const otherParticipant = conv.participants.find(
+        (p) => p._id.toString() !== loggedInUserId.toString()
       );
-      // Return a modified object
-      return { ...conversation.toObject(), participants: otherParticipants };
+      return {
+        _id: conv._id,
+        otherParticipant: otherParticipant,
+        lastMessage: conv.messages[0],
+      };
     });
 
-    res.status(200).json(filteredConversations);
+    res.status(200).json(formattedConversations);
   } catch (error) {
-    console.error('Error in getConversations controller: ', error.message);
+    console.error('Error in getConversations: ', error.message);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
 
-// @desc    Get messages for a specific conversation
-// @route   GET /api/messages/:otherUserId
-// @access  Private
-export const getConversationMessages = async (req, res) => {
+export const getMessages = async (req, res) => {
   try {
     const { otherUserId } = req.params;
-    const userId = req.user._id;
+    const senderId = req.user._id;
 
     const conversation = await Conversation.findOne({
-      participants: { $all: [userId, otherUserId] },
+      participants: { $all: [senderId, otherUserId] },
     }).populate('messages');
 
-    if (!conversation) {
-      return res.status(200).json([]);
-    }
+    if (!conversation) return res.status(200).json([]);
 
     res.status(200).json(conversation.messages);
   } catch (error) {
-    console.error('Error in getMessages controller: ', error.message);
+    console.error('Error in getMessages: ', error.message);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
