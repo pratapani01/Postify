@@ -1,92 +1,96 @@
 import Conversation from '../models/conversationModel.js';
 import Message from '../models/messageModel.js';
+import { getReceiverSocketId, io } from '../socket/socket.js';
 
-// Get all conversations for a user
-export const getConversations = async (req, res) => {
+export const sendMessage = async (req, res) => {
   try {
-    const conversations = await Conversation.find({
-      participants: req.user._id,
-    }).populate('participants', 'username profilePicture');
+    const { message } = req.body;
+    const { receiverId } = req.params;
+    const senderId = req.user._id;
 
-    // Get the last message for each conversation
-    const conversationsWithLastMessage = await Promise.all(
-      conversations.map(async (conversation) => {
-        const lastMessage = await Message.findOne({
-          conversationId: conversation._id,
-        }).sort({ createdAt: -1 });
+    let conversation = await Conversation.findOne({
+      participants: { $all: [senderId, receiverId] },
+    });
 
-        return {
-          ...conversation.toObject(),
-          lastMessage: lastMessage
-            ? {
-                text: lastMessage.text,
-                createdAt: lastMessage.createdAt,
-              }
-            : null,
-        };
-      })
-    );
-    
-    res.status(200).json(conversationsWithLastMessage);
+    if (!conversation) {
+      conversation = await Conversation.create({
+        participants: [senderId, receiverId],
+      });
+    }
+
+    const newMessage = new Message({
+      senderId,
+      receiverId,
+      message,
+    });
+
+    if (newMessage) {
+      conversation.messages.push(newMessage._id);
+    }
+
+    await Promise.all([conversation.save(), newMessage.save()]);
+
+    const receiverSocketId = getReceiverSocketId(receiverId);
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit('newMessage', newMessage);
+    }
+
+    res.status(201).json(newMessage);
   } catch (error) {
-    res.status(500).json({ message: 'Server Error' });
+    console.error('Error in sendMessage: ', error.message);
+    res.status(500).json({ error: 'Internal server error' });
   }
 };
 
+export const getConversations = async (req, res) => {
+  try {
+    const loggedInUserId = req.user._id;
+    const conversations = await Conversation.find({ participants: loggedInUserId })
+      .populate({
+        path: 'participants',
+        select: 'username profilePicture',
+      })
+      .populate({
+        path: 'messages',
+        options: { sort: { createdAt: -1 }, limit: 1 },
+      });
 
-// Get messages for a conversation
-export const getMessages = async (req, res) => {
-    try {
-        const { otherUserId } = req.params;
-        const userId = req.user._id;
+    const formattedConversations = conversations.map((conv) => {
+      const otherParticipant = conv.participants.find(
+        (p) => p._id.toString() !== loggedInUserId.toString()
+      );
+      return {
+        _id: conv._id,
+        otherParticipant: otherParticipant,
+        lastMessage: conv.messages[0],
+      };
+    });
 
-        const conversation = await Conversation.findOne({
-            participants: { $all: [userId, otherUserId] },
-        });
-
-        if (!conversation) {
-            return res.status(200).json([]);
-        }
-
-        const messages = await Message.find({
-            conversationId: conversation._id,
-        }).sort({ createdAt: 1 });
-
-        res.status(200).json(messages);
-    } catch (error) {
-        res.status(500).json({ message: 'Server Error' });
-    }
+    res.status(200).json(formattedConversations);
+  } catch (error) {
+    console.error('Error in getConversations: ', error.message);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 };
 
-// Send a message
-export const sendMessage = async (req, res) => {
-    try {
-        const { receiverId } = req.params;
-        const { message } = req.body;
-        const senderId = req.user._id;
+// THIS IS THE UPDATED, MORE RELIABLE FUNCTION
+export const getMessages = async (req, res) => {
+  try {
+    const { otherUserId } = req.params;
+    const senderId = req.user._id;
 
-        let conversation = await Conversation.findOne({
-            participants: { $all: [senderId, receiverId] },
-        });
+    // Directly find all messages between the two users
+    const messages = await Message.find({
+      $or: [
+        { senderId: senderId, receiverId: otherUserId },
+        { senderId: otherUserId, receiverId: senderId },
+      ],
+    }).sort({ createdAt: 'asc' }); // Sort messages by time
 
-        if (!conversation) {
-            conversation = await Conversation.create({
-                participants: [senderId, receiverId],
-            });
-        }
-
-        const newMessage = new Message({
-            senderId,
-            receiverId,
-            text: message,
-            conversationId: conversation._id,
-        });
-        
-        await newMessage.save();
-        
-        res.status(201).json(newMessage);
-    } catch (error) {
-        res.status(500).json({ message: 'Server Error' });
-    }
+    res.status(200).json(messages);
+  } catch (error) {
+    console.error('Error in getMessages: ', error.message);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 };
 

@@ -8,13 +8,16 @@ const conversationSchema = new mongoose.Schema(
         ref: 'User',
       },
     ],
-    messages: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Message',
-        default: [],
-      },
-    ],
+    // The fix is here: `default: []` is now correctly placed on the array itself.
+    messages: {
+      type: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Message',
+        },
+      ],
+      default: [],
+    },
   },
   { timestamps: true }
 );

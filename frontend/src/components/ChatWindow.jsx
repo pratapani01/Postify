@@ -1,135 +1,148 @@
-import React, { useState, useEffect, useRef, useContext } from 'react';
-import { useParams } from 'react-router-dom';
-import { getMessages, sendMessage, getUserById } from '../services/apiService';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { getMessages, sendMessage, getUserById } from '../services/apiService';
 import { io } from 'socket.io-client';
-import { FaPaperPlane } from 'react-icons/fa';
+import { FaPaperPlane, FaArrowLeft } from 'react-icons/fa';
+import { Link } from 'react-router-dom';
 
-const ChatWindow = () => {
-  const { userId: otherUserId } = useParams();
+const ChatWindow = ({ otherUserId }) => {
   const { currentUser } = useAuth();
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [otherUser, setOtherUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const socket = useRef();
-  const scrollRef = useRef();
+  const messagesEndRef = useRef(null);
 
-  // Connect to Socket.IO
+  // Scroll to the latest message
   useEffect(() => {
-    socket.current = io(import.meta.env.VITE_API_URL || 'http://localhost:5000');
-    
-    socket.current.on('getMessage', (data) => {
-        // Only update if the message is part of the current conversation
-        if (data.sender === otherUserId) {
-            setMessages((prev) => [...prev, { sender: data.sender, text: data.text, createdAt: new Date() }]);
-        }
-    });
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
-    return () => {
-      socket.current.disconnect();
-    };
-  }, [otherUserId]);
-
-  // Add user to socket server
+  // Fetch initial data and set up socket
   useEffect(() => {
-    if (currentUser) {
-      socket.current.emit('addUser', currentUser._id);
+    if (!otherUserId) {
+      setLoading(false);
+      // This case is handled by the parent MessagesPage, so we just return.
+      return;
     }
-  }, [currentUser]);
 
-  // Fetch messages and user data
-  useEffect(() => {
-    const fetchChatData = async () => {
-      if (currentUser) {
-        try {
-          const fetchedMessages = await getMessages(otherUserId);
-          const fetchedUser = await getUserById(otherUserId);
-          setMessages(fetchedMessages);
-          setOtherUser(fetchedUser.user);
-        } catch (error) {
-          console.error('Failed to fetch chat data', error);
-        }
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const [userData, messagesData] = await Promise.all([
+          getUserById(otherUserId),
+          getMessages(otherUserId),
+        ]);
+        setOtherUser(userData.user);
+        setMessages(messagesData);
+      } catch (err) {
+        console.error('Failed to fetch chat data', err);
+        setError('Failed to load chat. Please try again.');
+      } finally {
+        setLoading(false);
       }
     };
-    fetchChatData();
+
+    fetchData();
+
+    // Setup socket connection
+    if (currentUser) {
+      const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      socket.current = io(backendUrl.replace('/api', ''), {
+        query: { userId: currentUser._id },
+      });
+
+      socket.current.on('newMessage', (newMessage) => {
+        if (newMessage.senderId === otherUserId || newMessage.receiverId === otherUserId) {
+          setMessages((prevMessages) => [...prevMessages, newMessage]);
+        }
+      });
+
+      // Cleanup on component unmount
+      return () => {
+        socket.current.disconnect();
+      };
+    }
   }, [otherUserId, currentUser]);
-  
-  // Auto-scroll to the latest message
-  useEffect(() => {
-    scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!newMessage.trim() || !currentUser) return;
-
-    const message = {
-      sender: currentUser._id,
-      text: newMessage,
-      createdAt: new Date(),
-    };
-
-    socket.current.emit('sendMessage', {
-      senderId: currentUser._id,
-      receiverId: otherUserId,
-      text: newMessage,
-    });
+    if (!newMessage.trim()) return;
 
     try {
       const sentMessage = await sendMessage(otherUserId, newMessage);
-      setMessages([...messages, sentMessage]);
+      setMessages((prevMessages) => [...prevMessages, sentMessage]);
       setNewMessage('');
     } catch (error) {
       console.error('Failed to send message:', error);
     }
   };
 
+  if (loading) {
+    return <div className="flex items-center justify-center h-full text-gray-400">Loading Chat...</div>;
+  }
+
+  if (error) {
+    return <div className="flex items-center justify-center h-full text-red-500">{error}</div>;
+  }
+  
   if (!otherUser) {
-    return <div className="flex-1 p-4 text-center text-gray-400">Loading Chat...</div>;
+    // This message is shown on desktop if no chat is selected.
+    return <div className="hidden md:flex items-center justify-center h-full text-gray-400">Select a conversation to start chatting.</div>;
   }
 
   return (
     <div className="flex flex-col h-full">
-      {/* Chat Header */}
-      <div className="p-4 border-b border-gray-700/50 flex items-center gap-x-4">
+      {/* Chat Header with Back Button for Mobile */}
+      <div className="p-4 border-b border-gray-700 flex items-center gap-x-4 sticky top-0 bg-gray-800 z-10">
+        <Link to="/messages" className="md:hidden text-white mr-2">
+          <FaArrowLeft size={20} />
+        </Link>
         <div className="w-10 h-10 rounded-full bg-gray-600">
-          {otherUser.profilePicture && <img src={otherUser.profilePicture} alt={otherUser.username} className="w-full h-full rounded-full object-cover" />}
+          {otherUser.profilePicture && (
+            <img src={otherUser.profilePicture} alt={otherUser.username} className="w-full h-full object-cover rounded-full" />
+          )}
         </div>
-        <h2 className="text-lg font-bold text-white">{otherUser.username}</h2>
+        <h2 className="text-xl font-bold text-white">{otherUser.username}</h2>
       </div>
 
       {/* Messages Area */}
       <div className="flex-1 p-4 overflow-y-auto">
-        {messages.map((msg) => (
-          <div key={msg._id || msg.createdAt} ref={scrollRef}>
-            <div className={`flex mb-4 ${msg.sender === currentUser._id ? 'justify-end' : 'justify-start'}`}>
-              <div
-                className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${
-                  msg.sender === currentUser._id
-                    ? 'bg-blue-600 text-white rounded-br-none'
-                    : 'bg-gray-700 text-gray-200 rounded-bl-none'
-                }`}
-              >
-                <p>{msg.text}</p>
-              </div>
+        {messages.map((msg, index) => (
+          <div
+            key={msg._id || `msg-${index}`}
+            className={`flex mb-4 ${msg.senderId === currentUser._id ? 'justify-end' : 'justify-start'}`}
+          >
+            <div
+              className={`max-w-xs md:max-w-md p-3 rounded-lg ${
+                msg.senderId === currentUser._id
+                  ? 'bg-blue-600 text-white rounded-br-none'
+                  : 'bg-gray-700 text-gray-200 rounded-bl-none'
+              }`}
+            >
+              <p>{msg.message}</p>
             </div>
           </div>
         ))}
+        <div ref={messagesEndRef} />
       </div>
 
-      {/* Message Input */}
-      <div className="p-4 border-t border-gray-700/50">
+      {/* Message Input Form */}
+      <div className="p-4 border-t border-gray-700 bg-gray-800 sticky bottom-0">
         <form onSubmit={handleSendMessage} className="flex items-center gap-x-2">
           <input
             type="text"
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             placeholder="Type a message..."
-            className="flex-1 px-4 py-2 bg-gray-700 border border-transparent rounded-full text-white focus:outline-none focus:border-blue-500"
+            className="flex-1 w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-full text-white focus:outline-none focus:border-blue-500"
           />
           <button
             type="submit"
-            className="p-3 bg-blue-600 text-white rounded-full font-semibold hover:bg-blue-700 disabled:bg-gray-500"
+            className="p-3 bg-blue-600 text-white rounded-full hover:bg-blue-700 disabled:bg-gray-500 transition-colors"
             disabled={!newMessage.trim()}
           >
             <FaPaperPlane />
