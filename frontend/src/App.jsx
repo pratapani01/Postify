@@ -30,34 +30,37 @@ const AnimatedPage = ({ children }) => (
 
 const MainLayout = () => {
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      <div className="container mx-auto flex justify-center">
-        <div className="hidden lg:block sticky top-0 h-screen">
-          <LeftSidebar />
+    // THE FIX IS HERE: Use h-screen and flex to control the layout perfectly
+    <div className="h-screen bg-gray-900 text-white flex justify-center">
+      <div className="hidden lg:flex sticky top-0 h-full">
+        <LeftSidebar />
+      </div>
+      
+      {/* This main tag is now the central column */}
+      <main className="w-full max-w-2xl border-x border-gray-700 flex flex-col relative">
+        {/* Mobile Header (Sticky) */}
+        <div className="lg:hidden sticky top-0 z-20">
+          <MobileHeader />
         </div>
         
-        {/* THE FIX IS HERE: This main tag is now a flex container that fills the height */}
-        <main className="w-full max-w-2xl lg:max-w-xl xl:max-w-2xl border-x border-gray-700 flex flex-col">
-          <div className="lg:hidden sticky top-0 z-20">
-            <MobileHeader />
-          </div>
-          {/* Outlet now expands to fill the remaining space */}
-          <div className="flex-1 overflow-y-auto">
-            <Outlet />
-          </div>
-        </main>
-
-        <div className="hidden lg:block sticky top-0 h-screen">
-          <RightSidebar />
+        {/* This is now the ONLY scrollable area */}
+        <div className="flex-1 overflow-y-auto">
+          <Outlet />
         </div>
-      </div>
+        
+        {/* Mobile Bottom Navbar (Sticky) */}
+        <div className="lg:hidden sticky bottom-0 z-20">
+          <BottomNavbar />
+        </div>
+      </main>
 
-      <div className="lg:hidden">
-        <BottomNavbar />
+      <div className="hidden lg:flex sticky top-0 h-full">
+        <RightSidebar />
       </div>
     </div>
   );
 };
+
 
 function App() {
   const location = useLocation();
@@ -67,11 +70,11 @@ function App() {
         <Routes location={location} key={location.pathname}>
           <Route element={<MainLayout />}>
             <Route path="/" element={<AnimatedPage><HomePage /></AnimatedPage>} />
+            <Route path="/create" element={<AnimatedPage><HomePage /></AnimatedPage>} />
             <Route path="/profile/:username" element={<AnimatedPage><ProfilePage /></AnimatedPage>} />
             <Route path="/messages" element={<AnimatedPage><MessagesPage /></AnimatedPage>} />
             <Route path="/messages/:otherUserId" element={<AnimatedPage><MessagesPage /></AnimatedPage>} />
             <Route path="/imagine" element={<AnimatedPage><ImaginePage /></AnimatedPage>} />
-            <Route path="/create" element={<AnimatedPage><HomePage showCreatePostModal={true} /></AnimatedPage>} />
           </Route>
           <Route path="/login" element={<AnimatedPage><LoginPage /></AnimatedPage>} />
           <Route path="/register" element={<AnimatedPage><RegisterPage /></AnimatedPage>} />

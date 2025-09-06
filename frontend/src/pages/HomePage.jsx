@@ -65,7 +65,7 @@ const HomePage = () => {
         onClose={closeModal}
         onPostCreated={handlePostCreated}
       />
-      <div className="space-y-4 p-4">
+      <div className="relative">
         {posts.map((post) => (
           <PostCard
             key={post._id}
