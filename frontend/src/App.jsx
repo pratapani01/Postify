@@ -44,7 +44,7 @@ const MainLayout = () => {
         </div>
         
         {/* This is now the ONLY scrollable area */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto pt-16 pb-16">
           <Outlet />
         </div>
         
