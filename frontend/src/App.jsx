@@ -36,12 +36,12 @@ const MainLayout = () => {
           <LeftSidebar />
         </div>
         
-        {/* THE FIX IS HERE: This main tag is now a flex container that fills the height */}
         <main className="w-full max-w-2xl lg:max-w-xl xl:max-w-2xl border-x border-gray-700 flex flex-col">
+          {/* THE FIX IS HERE: The mobile header is now outside the scrollable area */}
           <div className="lg:hidden sticky top-0 z-20">
             <MobileHeader />
           </div>
-          {/* Outlet now expands to fill the remaining space */}
+          {/* This div is now the main scrollable container */}
           <div className="flex-1 overflow-y-auto">
             <Outlet />
           </div>
@@ -51,7 +51,8 @@ const MainLayout = () => {
           <RightSidebar />
         </div>
       </div>
-
+      
+      {/* The bottom navbar is outside the main content flow */}
       <div className="lg:hidden">
         <BottomNavbar />
       </div>
@@ -67,11 +68,11 @@ function App() {
         <Routes location={location} key={location.pathname}>
           <Route element={<MainLayout />}>
             <Route path="/" element={<AnimatedPage><HomePage /></AnimatedPage>} />
+            <Route path="/create" element={<AnimatedPage><HomePage /></AnimatedPage>} />
             <Route path="/profile/:username" element={<AnimatedPage><ProfilePage /></AnimatedPage>} />
             <Route path="/messages" element={<AnimatedPage><MessagesPage /></AnimatedPage>} />
             <Route path="/messages/:otherUserId" element={<AnimatedPage><MessagesPage /></AnimatedPage>} />
             <Route path="/imagine" element={<AnimatedPage><ImaginePage /></AnimatedPage>} />
-            <Route path="/create" element={<AnimatedPage><HomePage showCreatePostModal={true} /></AnimatedPage>} />
           </Route>
           <Route path="/login" element={<AnimatedPage><LoginPage /></AnimatedPage>} />
           <Route path="/register" element={<AnimatedPage><RegisterPage /></AnimatedPage>} />
