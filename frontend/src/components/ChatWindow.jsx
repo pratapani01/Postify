@@ -95,7 +95,7 @@ const ChatWindow = ({ otherUserId }) => {
   }
 
   return (
-    <div className="flex flex-col h-full bg-gray-800">
+    <div className="flex flex-col h-full">
       {/* Chat Header with Back Button for Mobile */}
       <div className="p-4 border-b border-gray-700 flex items-center gap-x-4 sticky top-0 bg-gray-800 z-10">
         <Link to="/messages" className="md:hidden text-white mr-2">
