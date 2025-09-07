@@ -1,4 +1,4 @@
-import { Routes, Route, Outlet, useLocation } from 'react-router-dom';
+import { Routes, Route, Outlet, useLocation, Navigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AuthProvider } from './context/AuthContext';
 
@@ -30,37 +30,37 @@ const AnimatedPage = ({ children }) => (
 
 const MainLayout = () => {
   return (
-    // THE FIX IS HERE: Use h-screen and flex to control the layout perfectly
     <div className="h-screen bg-gray-900 text-white flex justify-center">
+      {/* Left Sidebar */}
       <div className="hidden lg:flex sticky top-0 h-full">
         <LeftSidebar />
       </div>
       
-      {/* This main tag is now the central column */}
+      {/* Main Content */}
       <main className="w-full max-w-2xl border-x border-gray-700 flex flex-col relative">
-        {/* Mobile Header (Sticky) */}
+        {/* Mobile Header */}
         <div className="lg:hidden sticky top-0 z-20">
           <MobileHeader />
         </div>
         
-        {/* This is now the ONLY scrollable area */}
+        {/* Page Content */}
         <div className="flex-1 overflow-y-auto pt-16 pb-16">
           <Outlet />
         </div>
         
-        {/* Mobile Bottom Navbar (Sticky) */}
+        {/* Mobile Bottom Navbar */}
         <div className="lg:hidden sticky bottom-0 z-20">
           <BottomNavbar />
         </div>
       </main>
 
+      {/* Right Sidebar */}
       <div className="hidden lg:flex sticky top-0 h-full">
         <RightSidebar />
       </div>
     </div>
   );
 };
-
 
 function App() {
   const location = useLocation();
@@ -71,11 +71,17 @@ function App() {
           <Route element={<MainLayout />}>
             <Route path="/" element={<AnimatedPage><HomePage /></AnimatedPage>} />
             <Route path="/create" element={<AnimatedPage><HomePage /></AnimatedPage>} />
+
+            {/* FIXED Profile Routes */}
+            <Route path="/profile" element={<Navigate to="/login" replace />} />
             <Route path="/profile/:username" element={<AnimatedPage><ProfilePage /></AnimatedPage>} />
+
             <Route path="/messages" element={<AnimatedPage><MessagesPage /></AnimatedPage>} />
             <Route path="/messages/:otherUserId" element={<AnimatedPage><MessagesPage /></AnimatedPage>} />
             <Route path="/imagine" element={<AnimatedPage><ImaginePage /></AnimatedPage>} />
           </Route>
+
+          {/* Auth Routes */}
           <Route path="/login" element={<AnimatedPage><LoginPage /></AnimatedPage>} />
           <Route path="/register" element={<AnimatedPage><RegisterPage /></AnimatedPage>} />
         </Routes>
@@ -85,4 +91,3 @@ function App() {
 }
 
 export default App;
-
